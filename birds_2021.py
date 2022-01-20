@@ -21,11 +21,13 @@ def keep_columns(df,cols):
     '''Choose which columns from original dataset to keep
     Args:
         df (DataFrame): original dataframe containing all columns
-        cols (list of str): column names to keep
+        cols (str or list of str): column names to keep
     
     Returns:
         DataFrame: dataframe with only desired columns'''
 
+    if isinstance(cols,str):
+        cols = [cols]
     return df[cols].copy()
 
 def rename_and_lcase_columns(df,rename_dict,lower_case=True):
@@ -59,20 +61,34 @@ def focus_on_year(df,y):
     jan1 = y+'-01-01'
     dec31 = y+'-12-31'
 
-    df = df.loc[(df['date']>=jan1) & (df['date'] <= dec31)].copy()
+    ucase_date = 'Date'
+    lcase_date = 'date'
+
+    if ucase_date in df.columns:
+        df = df.loc[(df[ucase_date]>=jan1) & (df[ucase_date] <= dec31)].reset_index(drop=True).copy()
+    elif lcase_date in df.columns:
+        df = df.loc[(df[lcase_date]>=jan1) & (df[lcase_date] <= dec31)].reset_index(drop=True).copy()
+
     return df
 
-def drop_present_entries(df):
-    '''Drop entries where the count is "present", denoted by "X". This means that one or more,
-    or perhaps a lot more, birds were seen, but an exact count was not obtained.
+def drop_val_from_col(df,col,val):
+    '''Drop entries of specific value from certain column.
     
     Args:
-        df (DataFrame): dataframe containing present entries
+        df (DataFrame): complete dataframe
+        col (str): name of column to look for val. Not case sensitive.
+        val (any): rows containing val in col will be removed. Case sensitive
         
     Returns: 
-        DataFrame: dataframe with no present entries'''
+        DataFrame: dataframe with rows containing val in col removed'''
 
-    df.drop(df.loc[df['count']=='X'].index,inplace=True)
+    original_columns = df.columns
+    df.columns = [x.lower() for x in df.columns]
+    # df.drop(df.loc[df[col.lower()]==val].index,inplace=True)
+    # df = df.reset_index(drop=True)
+    df = df.loc[df[col.lower()] != val].reset_index(drop=True).copy()
+    df[col.lower()] = df[col.lower()].astype(int)
+    df.columns = original_columns
     return df
 
 def column_sum(df,col):
@@ -95,7 +111,8 @@ def total_birds_counted(df):
         df (DataFrame): dataset
     Returns: no return. output is printed to terminal'''
 
-    df = drop_present_entries(df)
+    'Drop entries containing "X" for the count, which denotes a bird was present, but not counted.'
+    df = drop_val_from_col(df,'count','X')
     df['count'] = df['count'].astype(int)
     total_birds = column_sum(df,'count')
     print('\n{:,} birds were counted.\n'.format(total_birds))
@@ -120,13 +137,17 @@ def most_freq_bird(df,n=10):
     freq_bird = freq_bird.sort_values(by='count',ascending=False).head(n)
 
     print(t.format(number_of_checklists,freq_bird))
-    
+
 def main():
     '''Main function calling other functions.
     Args: no args
     Returns: no return'''
 
     df = read_data('MyEBirdData.csv')
+    # df = read_data(r'test_read_csv.csv',date_and_time_column_positions=[3,4])
+    # print(df.iloc[0:3].head())
+    # print(focus_on_year(df,2020))
+    # exit()
     cols_to_keep = ['date_and_time','Submission ID','Common Name','Count',
     'State/Province','County','Location','Date','Time']
     df = keep_columns(df,cols_to_keep)
