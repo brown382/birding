@@ -58,17 +58,34 @@ def filter_by_dates(df,start_date,end_date,year):
     Returns:
         DataFrame: dataframe containing entries for only the year specified'''
 
-    '''TODO: need to check if year and either/both start_date/end_date are provided'''
-
-    if not year == None:
-        jan1 = str(year)+'-01-01'
-        dec31 = str(year)+'-12-31'
+    'If user wants to examine entire dataset and not filter by date'
+    if sum(x is not None for x in [start_date,end_date,year]) == 0:
+        return df
 
     date_col = [x for x in df.columns if x in ['date','Date']][0]
 
-    df = df.loc[(df[date_col]>=jan1) & (df[date_col] <= dec31)].reset_index(drop=True).copy()
+    'Check for invaled entries'
+    if not year == None and (not start_date == None or not end_date == None):
+        raise Exception("If providing start_date and/or end_date, cannot also provide year")
 
-    return df
+    #Year was provided
+    if not year == None:
+        start_date = str(year)+'-01-01'
+        end_date = str(year)+'-12-31'
+        df = df.loc[(df[date_col]>=start_date) & (df[date_col] <= end_date)].reset_index(drop=True).copy()
+        return df
+    #Both start and end dates were provided
+    elif not start_date == None and not end_date == None:
+        df = df.loc[(df[date_col]>=start_date) & (df[date_col] <= end_date)].reset_index(drop=True).copy()
+        return df
+    #Only start date was provided
+    elif not start_date == None:
+        df = df.loc[df[date_col]>=start_date].reset_index(drop=True).copy()
+        return df
+    #Only end date was provided
+    elif not end_date == None:
+        df = df.loc[df[date_col] <= end_date].reset_index(drop=True).copy()
+        return df
 
 def drop_val_from_col(df,col,val):
     '''Drop entries of specific value from certain column.
@@ -83,8 +100,6 @@ def drop_val_from_col(df,col,val):
 
     original_columns = df.columns
     df.columns = [x.lower() for x in df.columns]
-    # df.drop(df.loc[df[col.lower()]==val].index,inplace=True)
-    # df = df.reset_index(drop=True)
     df = df.loc[df[col.lower()] != val].reset_index(drop=True).copy()
     df[col.lower()] = df[col.lower()].astype(int)
     df.columns = original_columns
@@ -117,13 +132,15 @@ def total_birds_counted(file,start_date=None,end_date=None,year=None):
 
     df = read_data(file)
     df = filter_by_dates(df, start_date=start_date, end_date=end_date, year=year)
-    return df
 
     'Drop entries containing "X" for the count, which denotes a bird was present, but not counted.'
-    df = drop_val_from_col(df,'count','X')
-    df['count'] = df['count'].astype(int)
-    total_birds = column_sum(df,'count')
-    print('\n{:,} birds were counted.\n'.format(total_birds))
+    count_col = [c for c in df.columns if c in ['count','Count']][0]
+    df = drop_val_from_col(df,count_col,'X')
+
+    df[count_col] = df[count_col].astype(int)
+    total_birds = column_sum(df,count_col)
+
+    return total_birds
 
 def most_freq_bird(df,n=10):
     '''Find the birds that showed up on the most checklists for a given dataset.
@@ -146,20 +163,20 @@ def most_freq_bird(df,n=10):
 
     print(t.format(number_of_checklists,freq_bird))
 
-def main():
-    '''Main function calling other functions.
-    Args: no args
-    Returns: no return'''
+# def main():
+#     '''Main function calling other functions.
+#     Args: no args
+#     Returns: no return'''
 
-    df = read_data('MyEBirdData.csv')
-    cols_to_keep = ['date_and_time','Submission ID','Common Name','Count',
-    'State/Province','County','Location','Date','Time']
-    df = keep_columns(df,cols_to_keep)
-    df = rename_and_lcase_columns(df,{'Submission ID':'id','Common Name':'common','State/Province':'state'})
-    df_2021 = filter_by_dates(df,2021)
+#     df = read_data('MyEBirdData.csv')
+#     cols_to_keep = ['date_and_time','Submission ID','Common Name','Count',
+#     'State/Province','County','Location','Date','Time']
+#     df = keep_columns(df,cols_to_keep)
+#     df = rename_and_lcase_columns(df,{'Submission ID':'id','Common Name':'common','State/Province':'state'})
+#     df_2021 = filter_by_dates(df,2021)
 
-    total_birds_counted(df_2021)
-    most_freq_bird(df_2021)
+#     total_birds_counted(df_2021)
+#     most_freq_bird(df_2021)
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
