@@ -47,27 +47,26 @@ def rename_and_lcase_columns(df,rename_dict,lower_case=True):
 
     return df
 
-def focus_on_year(df,y):
+def filter_by_dates(df,start_date,end_date,year):
     '''Filter dataframe for a specific year, using the date column
     Args:
         df (DataFrame): dataframe containing entries from all time
-        y (int or string): desired year
+        start_date (str): if not None (default), drop all data before this date. Must be str in yyyy-mm-dd format.
+        end_date (str): if not None (default), drop all data after this date. Must be str in yyyy-mm-dd format.
+        year (int): if not None (default), drop all data not in this year
 
     Returns:
         DataFrame: dataframe containing entries for only the year specified'''
 
-    y = str(y)
+    '''TODO: need to check if year and either/both start_date/end_date are provided'''
 
-    jan1 = y+'-01-01'
-    dec31 = y+'-12-31'
+    if not year == None:
+        jan1 = str(year)+'-01-01'
+        dec31 = str(year)+'-12-31'
 
-    ucase_date = 'Date'
-    lcase_date = 'date'
+    date_col = [x for x in df.columns if x in ['date','Date']][0]
 
-    if ucase_date in df.columns:
-        df = df.loc[(df[ucase_date]>=jan1) & (df[ucase_date] <= dec31)].reset_index(drop=True).copy()
-    elif lcase_date in df.columns:
-        df = df.loc[(df[lcase_date]>=jan1) & (df[lcase_date] <= dec31)].reset_index(drop=True).copy()
+    df = df.loc[(df[date_col]>=jan1) & (df[date_col] <= dec31)].reset_index(drop=True).copy()
 
     return df
 
@@ -103,13 +102,22 @@ def column_sum(df,col):
 
     return df[col].sum()
 
-def total_birds_counted(df):
+def total_birds_counted(file,start_date=None,end_date=None,year=None):
     ''' Find the total number of birds counted. Requires count column to be summable, and 
     all "present" entries have been removed.
     
     Args:
-        df (DataFrame): dataset
+        file (str): file path of dataset to be read
+        start_date (str): str representation of start date by which to filter dates. Default
+        is None.
+        end_date (str): str representation of end date by which to filter dates. Default
+        is None.
+        year (int): data not in this year will be dropped from analyses. Default is None
     Returns: no return. output is printed to terminal'''
+
+    df = read_data(file)
+    df = filter_by_dates(df, start_date=start_date, end_date=end_date, year=year)
+    return df
 
     'Drop entries containing "X" for the count, which denotes a bird was present, but not counted.'
     df = drop_val_from_col(df,'count','X')
@@ -144,20 +152,14 @@ def main():
     Returns: no return'''
 
     df = read_data('MyEBirdData.csv')
-    # df = read_data(r'test_read_csv.csv',date_and_time_column_positions=[3,4])
-    # print(df.iloc[0:3].head())
-    # print(focus_on_year(df,2020))
-    # exit()
     cols_to_keep = ['date_and_time','Submission ID','Common Name','Count',
     'State/Province','County','Location','Date','Time']
     df = keep_columns(df,cols_to_keep)
     df = rename_and_lcase_columns(df,{'Submission ID':'id','Common Name':'common','State/Province':'state'})
-    df_2021 = focus_on_year(df,2021)
+    df_2021 = filter_by_dates(df,2021)
 
     total_birds_counted(df_2021)
     most_freq_bird(df_2021)
-
-    print(df_2021['date'].min())
 
 if __name__ == '__main__':
     main()
