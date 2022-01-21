@@ -64,7 +64,7 @@ def filter_by_dates(df,start_date,end_date,year):
 
     date_col = [x for x in df.columns if x in ['date','Date']][0]
 
-    'Check for invaled entries'
+    'Check for invalid entries'
     if not year == None and (not start_date == None or not end_date == None):
         raise Exception("If providing start_date and/or end_date, cannot also provide year")
 
@@ -128,7 +128,8 @@ def total_birds_counted(file,start_date=None,end_date=None,year=None):
         end_date (str): str representation of end date by which to filter dates. Default
         is None.
         year (int): data not in this year will be dropped from analyses. Default is None
-    Returns: no return. output is printed to terminal'''
+    Returns:
+        int: number of birds counted'''
 
     df = read_data(file)
     df = filter_by_dates(df, start_date=start_date, end_date=end_date, year=year)
@@ -142,26 +143,34 @@ def total_birds_counted(file,start_date=None,end_date=None,year=None):
 
     return total_birds
 
-def most_freq_bird(df,n=10):
+def most_freq_bird(file,n=None,start_date=None,end_date=None,year=None):
     '''Find the birds that showed up on the most checklists for a given dataset.
     Args:
-        df (DataFrame): dataset
-        n (int): number of birds to show in output (default = 10)
+        file (str): file path of dataset to be read
+        n (int): number of birds to show in output. Default = None (return all results)
+        start_date (str): str representation of start date by which to filter dates. Default
+        is None.
+        end_date (str): str representation of end date by which to filter dates. Default
+        is None.
+        year (int): data not in this year will be dropped from analyses. Default is None        
         
     Returns:
-        no return. Prints output to terminal'''
+        number_of_checklists (int): number of checklists in datasetno return. Prints output to terminal'''
 
-    number_of_checklists = len(df['id'].unique())
-    # 'time' column here is arbitrary. Just want to to end up with another column named 'count'
-    freq_bird = df.groupby('common')['time'].count().reset_index(name='count')
-    freq_bird.set_index('common',inplace=True)
-    freq_bird['perc_of_checklists'] = (freq_bird['count'] / number_of_checklists) * 100
-    freq_bird['perc_of_checklists'] = freq_bird['perc_of_checklists'].round(1)
+    df = read_data(file)
+    df = filter_by_dates(df, start_date=start_date, end_date=end_date, year=year)
 
-    t = '\nMost frequently seen birds in {:,} checklists:\n{}\n'
-    freq_bird = freq_bird.sort_values(by='count',ascending=False).head(n)
+    total_number_of_checklists = len(df['Submission ID'].unique())
+    # 'Count' column here is arbitrary. Just want to to end up with another column named 'count'
+    freq_bird = df.groupby('Common Name')['Count'].count().reset_index(name='num_checklists')
+    freq_bird.set_index('Common Name',inplace=True)
+    freq_bird['perc_of_checklists'] = (freq_bird['num_checklists'] / total_number_of_checklists)
 
-    print(t.format(number_of_checklists,freq_bird))
+    freq_bird = freq_bird.sort_values(by='num_checklists',ascending=False)
+    if not n == None:
+        freq_bird = freq_bird.iloc[:n].copy()
+
+    return total_number_of_checklists, freq_bird
 
 # def main():
 #     '''Main function calling other functions.
